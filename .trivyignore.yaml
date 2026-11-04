@@ -1,0 +1,145 @@
+# Audit DevSecOps — ligne de base Trivy acceptée (4 novembre 2026).
+#
+# But : la CI ne bloque que les NOUVELLES vulnérabilités CRITICAL/HIGH
+# corrigeables (et les nouveaux secrets). Chaque entrée ci-dessous existait
+# déjà dans bkimminich/juice-shop:v20.3.0 et reste hors du périmètre de la
+# série de corrections JWT / file-type / HEALTHCHECK.
+#
+# Règles :
+# - une entrée vise un couple (avis, paquet@version) via son purl : la même CVE
+#   sur un autre paquet ou une autre version n'est PAS ignorée;
+# - chaque entrée expire le 2026-12-31 : passé cette date, la CI échoue à
+#   nouveau et l'exception doit être revue (corrigée ou prolongée avec motif);
+# - les analyses citées sont dans le dépôt d'audit, docs/analysis/NN-*.md.
+#
+# Source : scans Trivy 0.76.0 du dépôt (fs) et de l'image corrigée, options
+# --severity CRITICAL,HIGH --ignore-unfixed, base du 2026-11-04.
+
+vulnerabilities:
+  # --- Prévu dans la prochaine série de corrections -------------------------
+  - id: CVE-2022-25887
+    purls: ["pkg:npm/sanitize-html@1.4.2"]
+    statement: "P2, fiche 03 : commentaire de feedback utilisateur sanitisé par cette version. Mise à jour prévue (feuille de route, étape 3)."
+    expired_at: 2026-12-31
+
+  # --- Analysés, exposition conditionnelle (fiche 21) -------------------------
+  - id: CVE-2026-106445
+    purls: ["pkg:npm/handlebars@4.7.9"]
+    statement: "P2, fiche 06 : champ layout de POST /dataerasure (défi Juice Shop volontaire). Correctif 4.7.10 à intégrer."
+    expired_at: 2026-12-31
+  - id: CVE-2026-106446
+    purls: ["pkg:npm/handlebars@4.7.9"]
+    statement: "P2, fiche 06 : même chemin que CVE-2026-106445. Correctif 4.7.10 à intégrer."
+    expired_at: 2026-12-31
+  - id: CVE-2022-25881
+    purls: ["pkg:npm/http-cache-semantics@3.8.1"]
+    statement: "P2, fiche 09 : parsing d'en-têtes via Got au démarrage (URL de configuration), pas d'entrée utilisateur directe."
+    expired_at: 2026-12-31
+  - id: CVE-2026-102990
+    purls: ["pkg:npm/basic-ftp@5.3.1"]
+    statement: "P2, fiche 08 : chemin indirect via proxy PAC pac+ftp:, non configuré dans l'image."
+    expired_at: 2026-12-31
+  - id: CVE-2026-59873
+    purls: ["pkg:npm/tar@6.2.1"]
+    statement: "P2, fiche 05 : tar.extract seulement dans des scripts de build / dépendances natives, pas sur une entrée applicative."
+    expired_at: 2026-12-31
+  - id: CVE-2026-23745
+    purls: ["pkg:npm/tar@6.2.1"]
+    statement: "P2, fiche 05 : voir CVE-2026-59873 (même paquet, même chemin de build)."
+    expired_at: 2026-12-31
+  - id: CVE-2026-23950
+    purls: ["pkg:npm/tar@6.2.1"]
+    statement: "P2, fiche 05 : voir CVE-2026-59873."
+    expired_at: 2026-12-31
+  - id: CVE-2026-24842
+    purls: ["pkg:npm/tar@6.2.1"]
+    statement: "P2, fiche 05 : voir CVE-2026-59873."
+    expired_at: 2026-12-31
+  - id: CVE-2026-26960
+    purls: ["pkg:npm/tar@6.2.1"]
+    statement: "P2, fiche 05 : voir CVE-2026-59873."
+    expired_at: 2026-12-31
+  - id: CVE-2026-29786
+    purls: ["pkg:npm/tar@6.2.1"]
+    statement: "P2, fiche 05 : voir CVE-2026-59873."
+    expired_at: 2026-12-31
+  - id: CVE-2026-31802
+    purls: ["pkg:npm/tar@6.2.1"]
+    statement: "P2, fiche 05 : voir CVE-2026-59873."
+    expired_at: 2026-12-31
+  - id: CVE-2026-59874
+    purls: ["pkg:npm/tar@6.2.1"]
+    statement: "P2, fiche 05 : voir CVE-2026-59873."
+    expired_at: 2026-12-31
+  - id: CVE-2026-73566
+    purls: ["pkg:npm/tar@6.2.1"]
+    statement: "P2, fiche 05 : voir CVE-2026-59873."
+    expired_at: 2026-12-31
+  - id: CVE-2026-26996
+    purls: ["pkg:npm/minimatch@3.0.5"]
+    statement: "P3, fiche 10 : motifs fixes de replace/defaultignore au démarrage, aucun motif contrôlé par l'utilisateur."
+    expired_at: 2026-12-31
+  - id: CVE-2026-27903
+    purls: ["pkg:npm/minimatch@3.0.5"]
+    statement: "P3, fiche 10 : voir CVE-2026-26996."
+    expired_at: 2026-12-31
+  - id: CVE-2026-27904
+    purls: ["pkg:npm/minimatch@3.0.5"]
+    statement: "P3, fiche 10 : voir CVE-2026-26996."
+    expired_at: 2026-12-31
+  - id: CVE-2019-10744
+    purls: ["pkg:npm/lodash@2.4.2"]
+    statement: "Fiche 02 : lodash 2.4.2 hérité de v20.3.0. Hors périmètre de la série JWT; à réévaluer avec la fiche."
+    expired_at: 2026-12-31
+  - id: CVE-2018-16487
+    purls: ["pkg:npm/lodash@2.4.2"]
+    statement: "Fiche 02 : voir CVE-2019-10744."
+    expired_at: 2026-12-31
+  - id: CVE-2021-23337
+    purls: ["pkg:npm/lodash@2.4.2"]
+    statement: "Fiche 02 : voir CVE-2019-10744."
+    expired_at: 2026-12-31
+  - id: CVE-2023-46233
+    purls: ["pkg:npm/crypto-js@3.3.0"]
+    statement: "Fiche 04 : crypto-js 3.3.0 hérité de v20.3.0. Hors périmètre de la série JWT; à réévaluer avec la fiche."
+    expired_at: 2026-12-31
+  - id: CVE-2026-71851
+    purls: ["pkg:npm/crypto-js@3.3.0"]
+    statement: "Fiche 04 : voir CVE-2023-46233."
+    expired_at: 2026-12-31
+  - id: CVE-2026-118664
+    purls: ["pkg:npm/decode-uri-component@0.2.2"]
+    statement: "Fiche 15 couvre ce paquet; cet avis est apparu dans la base après le 20 octobre et n'est pas encore analysé (contre-audit, section 5)."
+    expired_at: 2026-12-31
+
+  # --- Apparus dans la base après le 20 octobre, NON analysés -----------------
+  # Correctifs de version mineure disponibles : à traiter en priorité plutôt
+  # qu'à prolonger.
+  - id: CVE-2026-111181
+    purls: ["pkg:npm/body-parser@1.20.8"]
+    statement: "Nouveau dans la base (contre-audit, section 5), non analysé. Correctif 1.20.9 disponible."
+    expired_at: 2026-12-31
+  - id: CVE-2026-113872
+    purls: ["pkg:npm/multer@2.4.0"]
+    statement: "Nouveau dans la base, non analysé. Correctif 2.5.0 disponible; multer traite les uploads (lié à la fiche 13)."
+    expired_at: 2026-12-31
+  - id: CVE-2026-109383
+    purls: ["pkg:npm/undici@6.29.0"]
+    statement: "Nouveau dans la base, non analysé. Correctif 6.29.1 disponible."
+    expired_at: 2026-12-31
+  - id: CVE-2026-109869
+    purls: ["pkg:npm/undici@6.29.0"]
+    statement: "Nouveau dans la base, non analysé. Correctif 6.29.1 disponible."
+    expired_at: 2026-12-31
+  - id: CVE-2026-87018
+    purls: ["pkg:npm/undici@6.29.0"]
+    statement: "Nouveau dans la base, non analysé. Correctif 6.29.1 disponible."
+    expired_at: 2026-12-31
+
+secrets:
+  - id: private-key
+    paths:
+      - "terraform/networking.tf"
+      - "infrastructure/terraform/networking.tf"
+      - "**/infrastructure/terraform/networking.tf"
+    statement: "Clé volontaire du défi Juice Shop iacLeakedKeyChallenge (vuln-code-snippet, ligne 171), distincte de la clé de signature JWT. N'est utilisée par aucun code de l'application."
