@@ -19,7 +19,9 @@ ARG CYCLONEDX_NPM_VERSION='^2.0.0||^3.0.0||^4.0.0'
 RUN npm install -g @cyclonedx/cyclonedx-npm@$CYCLONEDX_NPM_VERSION
 RUN npm run sbom
 
-FROM gcr.io/distroless/nodejs24-debian13
+# Audit: base pinned to the digest used by bkimminich/juice-shop:v20.3.0 (its first
+# 22 layers match), so that before/after scans only differ by the audit fixes
+FROM gcr.io/distroless/nodejs24-debian13@sha256:96df910f65fdd8a21d00d14d4cc046adcfcf3ced2d5e96be4b39ebde9f4866c6
 ARG BUILD_DATE
 ARG VCS_REF
 LABEL maintainer="Bjoern Kimminich <bjoern.kimminich@owasp.org>" \
