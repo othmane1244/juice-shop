@@ -109,31 +109,30 @@ vulnerabilities:
     expired_at: 2026-12-31
   - id: CVE-2026-118664
     purls: ["pkg:npm/decode-uri-component@0.2.2"]
-    statement: "Fiche 15 couvre ce paquet; cet avis est apparu dans la base après le 20 octobre et n'est pas encore analysé (contre-audit, section 5)."
+    statement: "Tri 22 — exécution : OUI (chargé au démarrage, got 8 > cacheable-request > normalize-url > query-string). Atteignable : peu probable, URL de configuration et non entrée utilisateur. Décision : accepter jusqu'à la mise à jour de got (fiche 14)."
     expired_at: 2026-12-31
 
-  # --- Apparus dans la base après le 20 octobre, NON analysés -----------------
-  # Correctifs de version mineure disponibles : à traiter en priorité plutôt
-  # qu'à prolonger.
+  # --- Apparus dans la base après le 20 octobre : tri dans la fiche 22 -------
+  # Correctifs de version mineure disponibles : à traiter plutôt qu'à prolonger.
   - id: CVE-2026-111181
     purls: ["pkg:npm/body-parser@1.20.8"]
-    statement: "Nouveau dans la base (contre-audit, section 5), non analysé. Correctif 1.20.9 disponible."
+    statement: "Tri 22 — exécution : OUI. Atteignable : OUI sans authentification (urlencoded et text, inflate par défaut, server.ts:335 et 342); plantage non reproduit avec un gzip malformé simple. Décision : CORRIGER EN PRIORITÉ vers 1.20.9."
     expired_at: 2026-12-31
   - id: CVE-2026-113872
     purls: ["pkg:npm/multer@2.4.0"]
-    statement: "Nouveau dans la base, non analysé. Correctif 2.5.0 disponible; multer traite les uploads (lié à la fiche 13)."
+    statement: "Tri 22 — exécution : OUI. Atteignable : NON en l'état (aucun fileFilter, or l'avis exige un filtrage asynchrone; server.ts:722-745). Décision : passer à 2.5.0 avec la prochaine série."
     expired_at: 2026-12-31
   - id: CVE-2026-109383
     purls: ["pkg:npm/undici@6.29.0"]
-    statement: "Nouveau dans la base, non analysé. Correctif 6.29.1 disponible."
+    statement: "Tri 22 — exécution : NON (chargé seulement à l'appel par @ai-sdk/provider-utils pour le chatbot; le fetch de Node n'utilise pas ce paquet). Atteignable : seulement si une API LLM est configurée (défaut localhost:11434, injoignable). Décision : passer à 6.29.1 avant d'activer le chatbot."
     expired_at: 2026-12-31
   - id: CVE-2026-109869
     purls: ["pkg:npm/undici@6.29.0"]
-    statement: "Nouveau dans la base, non analysé. Correctif 6.29.1 disponible."
+    statement: "Tri 22 — exécution : NON (chargé seulement à l'appel par @ai-sdk/provider-utils pour le chatbot; le fetch de Node n'utilise pas ce paquet). Atteignable : seulement si une API LLM est configurée (défaut localhost:11434, injoignable). Décision : passer à 6.29.1 avant d'activer le chatbot."
     expired_at: 2026-12-31
   - id: CVE-2026-87018
     purls: ["pkg:npm/undici@6.29.0"]
-    statement: "Nouveau dans la base, non analysé. Correctif 6.29.1 disponible."
+    statement: "Tri 22 — exécution : NON (chargé seulement à l'appel par @ai-sdk/provider-utils pour le chatbot; le fetch de Node n'utilise pas ce paquet). Atteignable : seulement si une API LLM est configurée (défaut localhost:11434, injoignable). Décision : passer à 6.29.1 avant d'activer le chatbot."
     expired_at: 2026-12-31
 
 secrets:
