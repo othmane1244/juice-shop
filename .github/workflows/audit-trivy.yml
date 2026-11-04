@@ -1,0 +1,64 @@
+# Audit DevSecOps — contrôle Trivy obligatoire sur chaque pull request.
+# Trivy est exécuté depuis l'image officielle épinglée par digest (même
+# version 0.76.0 que l'audit initial), sans action tierce.
+name: "Audit Trivy"
+
+on:
+  pull_request:
+  push:
+    branches: [audit/corrections]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  TRIVY_IMAGE: aquasec/trivy@sha256:2416d1f74045b57274df1a340eee6b510cacd73c66a6ccb8da092b117eb7d222
+
+jobs:
+  trivy-fs:
+    name: Dépendances, secrets et configuration (fichiers)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Trivy fs — rapport complet (toutes sévérités)
+        run: |
+          mkdir -p reports
+          docker run --rm -v "$PWD:/src" -v trivy-cache:/root/.cache/trivy "$TRIVY_IMAGE" fs \
+            --scanners vuln,secret,misconfig --format json --output /src/reports/trivy-fs.json \
+            --skip-dirs /src/node_modules,/src/frontend/node_modules /src
+      - name: Trivy fs — blocage sur CRITICAL/HIGH corrigeables
+        run: |
+          docker run --rm -v "$PWD:/src" -v trivy-cache:/root/.cache/trivy "$TRIVY_IMAGE" fs \
+            --scanners vuln,secret --severity CRITICAL,HIGH --ignore-unfixed --exit-code 1 \
+            --skip-dirs /src/node_modules,/src/frontend/node_modules /src
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: trivy-fs
+          path: reports/
+
+  trivy-image:
+    name: Image construite
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Construire l'image
+        run: docker build -t juice-shop-audit:${{ github.sha }} .
+      - name: Trivy image — rapport complet et SBOM
+        run: |
+          mkdir -p reports
+          docker save juice-shop-audit:${{ github.sha }} -o image.tar
+          docker run --rm -v "$PWD:/w" -v trivy-cache:/root/.cache/trivy "$TRIVY_IMAGE" image \
+            --input /w/image.tar --scanners vuln,secret --format json --output /w/reports/trivy-image.json
+          docker run --rm -v "$PWD:/w" -v trivy-cache:/root/.cache/trivy "$TRIVY_IMAGE" image \
+            --input /w/image.tar --format cyclonedx --output /w/reports/sbom.cdx.json
+      - name: Trivy image — blocage sur CRITICAL/HIGH corrigeables
+        run: |
+          docker run --rm -v "$PWD:/w" -v trivy-cache:/root/.cache/trivy "$TRIVY_IMAGE" image \
+            --input /w/image.tar --scanners vuln,secret --severity CRITICAL,HIGH --ignore-unfixed --exit-code 1
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: trivy-image
+          path: reports/

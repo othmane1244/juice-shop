@@ -38,4 +38,7 @@ WORKDIR /juice-shop
 COPY --from=installer --chown=65532:0 /juice-shop .
 USER 65532
 EXPOSE 3000
+# Audit DS-0026: container health check (distroless image: no shell or curl, use node)
+HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
+    CMD ["/nodejs/bin/node", "-e", "require('http').get('http://127.0.0.1:3000/rest/admin/application-version', r => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"]
 CMD ["/juice-shop/build/app.js"]
