@@ -98,6 +98,11 @@ jobs:
           docker run --rm -v "$PWD:/src" "$KICS_IMAGE" scan -p /src -o /src/out \
             --report-formats sarif,json --output-name resultats \
             --exclude-type dockerfile --disable-secrets --ignore-on-exit results --no-progress --ci
+          # Le SARIF de KICS répète des entrées de taxonomie CWE, ce que GitHub refuse
+          # (« taxa contains duplicate item ») : dédoublonnage par id, résultats inchangés.
+          sudo jq '.runs |= map(if .taxonomies then .taxonomies |= map(.taxa |= unique_by(.id)) else . end)' \
+            out/resultats.sarif > /tmp/kics.sarif
+          sudo mv /tmp/kics.sarif out/resultats.sarif
 
       - name: Dockerfile — Trivy config
         if: matrix.controle == 'dockerfile-trivy'
