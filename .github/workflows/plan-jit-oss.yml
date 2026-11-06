@@ -1,0 +1,131 @@
+# Audit DevSecOps — reproduction OPEN SOURCE du plan Jit « Minimal Viable
+# Security ». Ce n'est PAS Jit : jit.io est inaccessible depuis fin octobre
+# 2026 (voir docs/jit/acces-bloque.md dans le dépôt d'audit). Ce workflow
+# exécute les mêmes outils que ceux que le plan orchestrait :
+#   SAST Semgrep · SCA OSV-Scanner · secrets Gitleaks · IaC KICS · Dockerfile Trivy
+#
+# Chaque exécution analyse deux cibles :
+#   - « courant »   : le commit qui a déclenché le workflow;
+#   - « reference » : audit/base-v20.3.0 (code audité, sans correction).
+# Les SARIF sont envoyés dans l'onglet Security (catégorie <outil>-<cible>,
+# rattachés à leur branche), les JSON sont gardés en artefacts.
+#
+# Mode NON BLOQUANT : les outils ne font pas échouer le job quand ils
+# trouvent des constats; seule une erreur d'exécution fait échouer un job.
+# Actions épinglées par SHA, outils épinglés par digest d'image.
+name: "Plan Jit (reproduction OSS)"
+
+on:
+  push:
+    branches: [audit/corrections]
+  pull_request:
+    branches: [audit/corrections]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  REF_BRANCH: audit/base-v20.3.0
+  SEMGREP_IMAGE: semgrep/semgrep@sha256:2e45517a85e13a9cca14a2a00df6bb48affd66b8ebfae1b0991cd57578362fb0 # 1.183.0
+  OSV_IMAGE: ghcr.io/google/osv-scanner@sha256:4f3b7e2c64b9d38a5febc5a7e4a3dfef1d1362f726dea7a2ef4762b46469fcd0 # v2.7.0
+  GITLEAKS_IMAGE: zricethezav/gitleaks@sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f # v8.30.1
+  KICS_IMAGE: checkmarx/kics@sha256:ef29dbac14b046b1ef65f3280646112e927a61781c5f01bca1aeb723e0b96003 # v2.2.0
+  TRIVY_IMAGE: aquasec/trivy@sha256:2416d1f74045b57274df1a340eee6b510cacd73c66a6ccb8da092b117eb7d222 # 0.76.0
+
+jobs:
+  scan:
+    name: ${{ matrix.controle }} — ${{ matrix.cible }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write # envoi des SARIF dans l'onglet Security
+    strategy:
+      fail-fast: false
+      matrix:
+        controle: [sast-semgrep, sca-osv, secrets-gitleaks, iac-kics, dockerfile-trivy]
+        cible: [courant, reference]
+    steps:
+      - name: Récupérer la cible
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ matrix.cible == 'reference' && env.REF_BRANCH || '' }}
+          persist-credentials: false
+
+      - name: Identifier le commit analysé
+        id: cible
+        run: |
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          if [ "${{ matrix.cible }}" = "reference" ]; then
+            echo "ref=refs/heads/$REF_BRANCH" >> "$GITHUB_OUTPUT"
+          else
+            echo "ref=$GITHUB_REF" >> "$GITHUB_OUTPUT"
+          fi
+          mkdir -p out
+          echo "Commit analysé : $(git rev-parse HEAD) ($(git log -1 --format=%s))"
+
+      - name: SAST — Semgrep (p/javascript, p/typescript, p/owasp-top-ten)
+        if: matrix.controle == 'sast-semgrep'
+        run: |
+          docker run --rm -v "$PWD:/src" -w /src "$SEMGREP_IMAGE" semgrep scan \
+            --config p/javascript --config p/typescript --config p/owasp-top-ten \
+            --metrics=off --sarif-output=out/resultats.sarif --json-output=out/resultats.json /src
+
+      - name: SCA — OSV-Scanner (fichiers de verrouillage du dépôt)
+        if: matrix.controle == 'sca-osv'
+        run: |
+          # Code 1 = vulnérabilités trouvées (non bloquant); tout autre code non nul = erreur.
+          for f in sarif json; do
+            set +e
+            docker run --rm -v "$PWD:/src" "$OSV_IMAGE" scan source -r --allow-no-lockfiles \
+              --format "$f" --output-file "/src/out/resultats.$f" /src
+            rc=$?
+            set -e
+            if [ "$rc" -ne 0 ] && [ "$rc" -ne 1 ]; then echo "osv-scanner a échoué (code $rc)"; exit "$rc"; fi
+          done
+
+      - name: Secrets — Gitleaks (valeurs expurgées)
+        if: matrix.controle == 'secrets-gitleaks'
+        run: |
+          for f in sarif json; do
+            docker run --rm -v "$PWD:/src" "$GITLEAKS_IMAGE" dir /src --redact --no-banner \
+              --exit-code 0 --report-format "$f" --report-path "/src/out/resultats.$f"
+          done
+
+      - name: IaC — KICS (hors Dockerfile, confié à Trivy comme dans le plan Jit)
+        if: matrix.controle == 'iac-kics'
+        run: |
+          docker run --rm -v "$PWD:/src" "$KICS_IMAGE" scan -p /src -o /src/out \
+            --report-formats sarif,json --output-name resultats \
+            --exclude-type dockerfile --disable-secrets --ignore-on-exit results --no-progress --ci
+          # Le SARIF de KICS répète des entrées de taxonomie CWE, ce que GitHub refuse
+          # (« taxa contains duplicate item ») : dédoublonnage par id, résultats inchangés.
+          sudo jq '.runs |= map(if .taxonomies then .taxonomies |= map(.taxa |= unique_by(.id)) else . end)' \
+            out/resultats.sarif > /tmp/kics.sarif
+          sudo mv /tmp/kics.sarif out/resultats.sarif
+
+      - name: Dockerfile — Trivy config
+        if: matrix.controle == 'dockerfile-trivy'
+        run: |
+          for f in sarif json; do
+            docker run --rm -v "$PWD:/src" "$TRIVY_IMAGE" config --misconfig-scanners dockerfile \
+              --format "$f" --output "/src/out/resultats.$f" /src
+          done
+
+      - name: Envoyer le SARIF dans l'onglet Security
+        if: always() && hashFiles('out/resultats.sarif') != ''
+        uses: github/codeql-action/upload-sarif@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
+        with:
+          sarif_file: out/resultats.sarif
+          category: ${{ matrix.controle }}-${{ matrix.cible }}
+          ref: ${{ steps.cible.outputs.ref }}
+          sha: ${{ steps.cible.outputs.sha }}
+
+      - name: Conserver les résultats (artefact)
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ${{ matrix.controle }}-${{ matrix.cible }}
+          path: out/
+          if-no-files-found: warn
+          retention-days: 30
