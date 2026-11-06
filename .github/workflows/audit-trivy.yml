@@ -20,7 +20,7 @@ jobs:
     name: Dépendances, secrets et configuration (fichiers)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - name: Trivy fs — rapport complet (toutes sévérités)
         run: |
           mkdir -p reports
@@ -36,7 +36,7 @@ jobs:
             --scanners vuln,secret --severity CRITICAL,HIGH --ignore-unfixed --exit-code 1 \
             --ignorefile /src/.trivyignore.yaml \
             --skip-dirs /src/node_modules,/src/frontend/node_modules,/src/reports /src
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: always()
         with:
           name: trivy-fs
@@ -46,7 +46,7 @@ jobs:
     name: Image construite
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - name: Construire l'image
         run: docker build -t juice-shop-audit:${{ github.sha }} .
       - name: Trivy image — rapport complet et SBOM
@@ -62,7 +62,7 @@ jobs:
           docker run --rm -v "$PWD:/w" -v trivy-cache:/root/.cache/trivy "$TRIVY_IMAGE" image \
             --input /w/image.tar --scanners vuln,secret --severity CRITICAL,HIGH --ignore-unfixed --exit-code 1 \
             --ignorefile /w/.trivyignore.yaml
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: always()
         with:
           name: trivy-image
